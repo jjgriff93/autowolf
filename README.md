@@ -16,7 +16,7 @@
 
 ```bash
 git clone
-cd ai-werewolf
+cd autowolf
 ```
 
 2. Install the dependencies:
