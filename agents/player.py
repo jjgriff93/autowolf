@@ -1,71 +1,121 @@
-from typing import Callable
-
 from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.base import Handoff
-from autogen_core.memory import ListMemory
+from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
+from autogen_core.model_context import ChatCompletionContext
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
+
+from models.AgentVoteResponse import AgentVoteResponse
 
 
 class WerewolfPlayer:
     def __init__(
         self,
-        model_client: AzureOpenAIChatCompletionClient,
+        model_config: dict[str, str],
         id: int,
         role: str,
         all_roles: list[str],
-        on_vote: Callable[[int], None],
     ):
         self.id = id
-        self.on_vote = on_vote
         self.role = role
+        self.model_config = model_config
+
+        # Create a memory for recording the player's internal thoughts
+        self.thoughts = ListMemory(name="thoughts")  # TODO: change to vector and make persistent
+        self.events = ListMemory(name="events")  # TODO: change to vector and make persistent
         self.system_prompt = f"""
       You are Player {id} in a game of Werewolf.
 
       Objectives:
-      - The game is divided into two teams: the werewolves and the villagers.
-      - The werewolves must kill off the villagers without being caught.
-      - The villagers (which includes seer) must identify the werewolves and kill them off.
+      - The game is divided into two teams: the werewolves and the villagers
+      - The werewolves must kill off the villagers without being caught
+      - The villagers (which includes seer) must identify the werewolves and kill them off
 
       How it works:
-      - Each round consists of a day and a night phase.
-      - During the day you and the other players will discuss your suspicions for who is a werewolf.
-      - Once you've had some discussions and have a suspicion, make your vote by calling the vote function with the player ID of the target.
-      - After making your vote, stay quiet and let the other players continue their discussion and make their votes.
-      - Once all votes are in the host will tell you the results and who has been eliminated.
-      - The night phase will then begin and the werewolves will choose a player to eliminate.
-      - The host will tell you who has been killed and the day phase will begin again.
-      - The game ends when there is only either villagers or werewolves remaining, or if only 2 players are left, in which case if a werewolf remains, they win.
+      - Each round consists of a day and a night phase
+      - During the day players will discuss your suspicions for who is a werewolf
+      - Players will individually vote for another player to eliminate with a reason for their vote, which everyone will see
+      - The HOST will announce the votes and the player that was eliminated
+      - The night phase will then begin and the werewolves will discuss who to kill
+      - The werewolves will then vote for a player to eliminate
+      - The HOST will tell you who has been killed and the day phase will begin again
+      - The game ends when there is only either villagers or werewolves remaining, or if only 2 players are left, in which case if a werewolf remains, they win
 
       Tips:
-      - If you're a villager, try to work with others and figure out who the werewolves are, depending on how players are acting and whether what they're saying makes sense.
-      - If you're a werewolf, make sure to blend in and not attract suspicion. Pretend you're another role and that you're helping out the villagers.
-      
-      DO NOT output your internal monologue/strategy as the other players will see it.
+      - If you're a villager, try to work with others and figure out who the werewolves are, depending on how players are acting and whether what they're saying makes sense
+      - If you're a werewolf, make sure to blend in and not attract suspicion. Pretend you're another role and that you're helping out the villagers
 
-      Your host will tell you when each phase starts and ends. Don't proceed to the next phase until you're told to do so.
-      In discussions, handoff/transfer to a specific player if you want to ask them a direct question, otherwise handoff randomly.
-      Always send a response to the discussion first before transferring.
+      Rules:
+      - Follow the HOST's instructions and do not break character
+      - DO NOT output your internal monologue/strategy in the day phase discussions as the other players will see it
+      - DO NOT take on the role of the HOST or any other player at any point
+      - DO NOT proceed to the next phase until you're told to by the HOST
+      - DO NOT vote for yourself
+      - In discussions, handoff/transfer to a specific player if you want to ask them a direct question, otherwise handoff randomly
+      - Discussions with other players will end either after 60 seconds or until all have uttered **READY TO VOTE**
 
       The possible roles in play (comma-separated) are: {','.join(all_roles)}.
 
       You've just checked your card and found out that you have the role of {role}.
     """
-        self.agent = AssistantAgent(
-            name=f"player_{id}",
-            model_client=model_client,
-            tools=[self.vote],
-            handoffs=[f"player_{i}" for i in range(1, len(all_roles) + 1) if i != id],
-            # memory=ListMemory(),
+
+    def get_agent_for_discussion(self, player_ids: list[int]) -> AssistantAgent:
+        """Create agent to discuss with other players"""
+        if len(player_ids) > 1:
+            handoffs = [f"player_{id}" for id in player_ids if id != self.id]
+            client = AzureOpenAIChatCompletionClient(**self.model_config, parallel_tool_calls=False)
+        else:
+            handoffs = None
+            client = AzureOpenAIChatCompletionClient(**self.model_config)
+
+        return AssistantAgent(
+            name=f"player_{self.id}",
+            model_client=client,
+            handoffs=handoffs,
+            memory=[self.events, self.thoughts],
             system_message=self.system_prompt,
-            reflect_on_tool_use=True,
             model_client_stream=True,  # Enable streaming tokens from the model client.
         )
 
-    def vote(self, target: int):
-        """Vote for a player to be eliminated.
-        Args:
-            target (int): The player ID of the target to vote for.
-        """
-        self.on_vote(target)
+    async def make_vote(self, chat_context: ChatCompletionContext) -> AgentVoteResponse:
+        """Tell agent to make a vote"""
+        model_client = AzureOpenAIChatCompletionClient(response_format=AgentVoteResponse, **self.model_config)
+        agent = AssistantAgent(
+            name=f"player_{self.id}",
+            model_client=model_client,
+            model_context=chat_context,
+            system_message=self.system_prompt,
+            memory=[self.events, self.thoughts],
+        )
+        result = await agent.run(
+            task="HOST: use your memories and thoughts from previous discussions to determine the player you'd like to eliminate with a brief reason why."
+        )
+        message = AgentVoteResponse.model_validate_json(result.messages[-1].content)
+        return message
 
-    # TODO: add to memory method for internal monolgue / suspicion tracking
+    async def reflect_on_discussion(self, chat_context: ChatCompletionContext):
+        """Reflect on the discussion and store summary to memory"""
+        # TODO: can we remove the need to keep creating a new agent for each task?
+        agent = AssistantAgent(
+            name=f"player_{self.id}",
+            model_client=AzureOpenAIChatCompletionClient(**self.model_config),
+            model_context=chat_context,
+            system_message=self.system_prompt,
+            memory=[self.events, self.thoughts],
+            tools=[self.add_internal_thought],
+        )
+        await agent.run(
+            task="HOST: discussion has ended. Please reflect on the discussion and summarise things that stood out, suspicions of other players or potential strategies and record them to your memory."
+        )
+
+    async def remember_event(self, event: str, round: int):
+        """Add a game event to the player's memory."""
+        content = MemoryContent(
+            content=event, mime_type=MemoryMimeType.TEXT, metadata={"type": "event", "round": round}
+        )
+        await self.events.add(content)
+
+    async def add_internal_thought(self, content: str, round: int):
+        """Add an internal thought to the agent's memory."""
+        content = MemoryContent(
+            content=content, mime_type=MemoryMimeType.TEXT, metadata={"type": "thought", "round": round}
+        )
+        await self.thoughts.add(content)

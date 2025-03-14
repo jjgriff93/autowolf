@@ -45,27 +45,27 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "autogen-agentchat"
-version = "0.4.7"
+version = "0.4.9"
 description = "AutoGen agents and teams library"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "autogen_agentchat-0.4.7-py3-none-any.whl", hash = "sha256:542fefbfb0cd382c551ced715a93bdf845d8d510b4be85a061550c0a7a08a42f"},
-    {file = "autogen_agentchat-0.4.7.tar.gz", hash = "sha256:83ab5050e1983e64bddb46a9f10048b315e17bd2a20f083bb5d99844ed36fa7f"},
+    {file = "autogen_agentchat-0.4.9-py3-none-any.whl", hash = "sha256:b7f80d73ac3f8998c9590c9b36d5249a048c9f9c5a341b5db2d33e06ddbb0c6b"},
+    {file = "autogen_agentchat-0.4.9.tar.gz", hash = "sha256:1e99638d8d96dc35c5b208558ae5f492fbfaec276abf0b0d592b126f4c123dc5"},
 ]
 
 [package.dependencies]
-autogen-core = "0.4.7"
+autogen-core = "0.4.9"
 
 [[package]]
 name = "autogen-core"
-version = "0.4.7"
+version = "0.4.9"
 description = "Foundational interfaces and agent runtime implementation for AutoGen"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "autogen_core-0.4.7-py3-none-any.whl", hash = "sha256:31a73b68369c7fa4006e349aedb909c198d887646b0443810d8d5a4694df44bf"},
-    {file = "autogen_core-0.4.7.tar.gz", hash = "sha256:51955b3d7b7b43583373627f25af5cc1214d358350c9fd8a9ded74065ff3ca93"},
+    {file = "autogen_core-0.4.9-py3-none-any.whl", hash = "sha256:11dcc445675afe97cc37ac51cb0c3f0ab69ffefbdaee9cf4a2cee378db2ab792"},
+    {file = "autogen_core-0.4.9.tar.gz", hash = "sha256:44778b4f8296cf1bd8a0c2fbb72fe4b4a9d33f5340576d1d949c1334aafecf3a"},
 ]
 
 [package.dependencies]
@@ -78,18 +78,18 @@ typing-extensions = ">=4.0.0"
 
 [[package]]
 name = "autogen-ext"
-version = "0.4.7"
+version = "0.4.9"
 description = "AutoGen extensions library"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "autogen_ext-0.4.7-py3-none-any.whl", hash = "sha256:58f23e9e0127de2863ee40fc5bcc64a65596775813dedf44f5765dc17f1d9206"},
-    {file = "autogen_ext-0.4.7.tar.gz", hash = "sha256:461f992ffebed87075c02d3be7f3b8355262bcf507d012e084eac231ea951b1a"},
+    {file = "autogen_ext-0.4.9-py3-none-any.whl", hash = "sha256:1cd1ca34429f70b2079484284802b2b96f78d060c74a3a3b7a4d09ac35d19e21"},
+    {file = "autogen_ext-0.4.9.tar.gz", hash = "sha256:5b17f481ea5151cb16d17dc5eaae44b5420b265aca675823db78ec623f57473a"},
 ]
 
 [package.dependencies]
 aiofiles = {version = "*", optional = true, markers = "extra == \"openai\""}
-autogen-core = "0.4.7"
+autogen-core = "0.4.9"
 azure-ai-inference = {version = ">=1.0.0b7", optional = true, markers = "extra == \"azure\""}
 azure-core = {version = "*", optional = true, markers = "extra == \"azure\""}
 azure-identity = {version = "*", optional = true, markers = "extra == \"azure\""}
@@ -98,17 +98,20 @@ tiktoken = {version = ">=0.8.0", optional = true, markers = "extra == \"openai\"
 
 [package.extras]
 azure = ["azure-ai-inference (>=1.0.0b7)", "azure-core", "azure-identity"]
+chromadb = ["chromadb"]
 diskcache = ["diskcache (>=5.6.3)"]
 docker = ["asyncio-atexit (>=1.0.1)", "docker (>=7.0,<8.0)"]
-file-surfer = ["autogen-agentchat (==0.4.7)", "markitdown (>=0.0.1a2)"]
+file-surfer = ["autogen-agentchat (==0.4.9)", "markitdown (>=0.0.1,<0.1.0)"]
 gemini = ["google-genai (>=1.0.0)"]
 graphrag = ["graphrag (>=1.0.1)"]
 grpc = ["grpcio (>=1.70.0,<1.71.0)"]
 http-tool = ["httpx (>=0.27.0)", "json-schema-to-pydantic (>=0.2.0)"]
 jupyter-executor = ["ipykernel (>=6.29.5)", "nbclient (>=0.10.2)"]
 langchain = ["langchain-core (>=0.3.3,<0.4.0)"]
-magentic-one = ["autogen-agentchat (==0.4.7)", "markitdown (>=0.0.1a2)", "pillow (>=11.0.0)", "playwright (>=1.48.0)"]
+llama-cpp = ["llama-cpp-python (>=0.1.9)"]
+magentic-one = ["autogen-agentchat (==0.4.9)", "markitdown (>=0.0.1,<0.1.0)", "pillow (>=11.0.0)", "playwright (>=1.48.0)"]
 mcp = ["json-schema-to-pydantic (>=0.2.2)", "mcp (>=1.1.3)"]
+ollama = ["ollama (>=0.4.7)", "tiktoken (>=0.8.0)"]
 openai = ["aiofiles", "openai (>=1.52.2)", "tiktoken (>=0.8.0)"]
 redis = ["redis (>=5.2.1)"]
 rich = ["rich (>=13.9.4)"]
@@ -123,8 +126,9 @@ semantic-kernel-mistralai = ["semantic-kernel[mistralai] (>=1.17.1)"]
 semantic-kernel-ollama = ["semantic-kernel[ollama] (>=1.17.1)"]
 semantic-kernel-onnx = ["semantic-kernel[onnx] (>=1.17.1)"]
 semantic-kernel-pandas = ["semantic-kernel[pandas] (>=1.17.1)"]
-video-surfer = ["autogen-agentchat (==0.4.7)", "ffmpeg-python", "openai-whisper", "opencv-python (>=4.5)"]
-web-surfer = ["autogen-agentchat (==0.4.7)", "markitdown (>=0.0.1a2)", "pillow (>=11.0.0)", "playwright (>=1.48.0)"]
+task-centric-memory = ["chromadb (>=0.6.3)"]
+video-surfer = ["autogen-agentchat (==0.4.9)", "ffmpeg-python", "openai-whisper", "opencv-python (>=4.5)"]
+web-surfer = ["autogen-agentchat (==0.4.9)", "markitdown (>=0.0.1,<0.1.0)", "pillow (>=11.0.0)", "playwright (>=1.48.0)"]
 
 [[package]]
 name = "azure-ai-inference"
@@ -1530,4 +1534,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "c6f1547cc3290ee86c5c9f9f52c9d5ce0f6a189bf5ac0777c382415df10c1f0e"
+content-hash = "1a70afc9a1b464fe289b1f32e756df202ee69c73428a97f16bcad2a3cb768fd5"

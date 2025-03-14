@@ -1,7 +1,6 @@
 import asyncio
 import os
 
-from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 
@@ -11,13 +10,13 @@ load_dotenv()
 
 token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")
 
-model_client = AzureOpenAIChatCompletionClient(
-    azure_deployment=os.getenv("MODEL_DEPLOYMENT"),
-    model=os.getenv("MODEL_NAME"),
-    api_version="2024-06-01",
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    azure_ad_token_provider=token_provider,
-)
+model_config = {
+    "azure_deployment": os.getenv("MODEL_DEPLOYMENT"),
+    "model": os.getenv("MODEL_NAME"),
+    "api_version": "2024-10-21",
+    "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
+    "azure_ad_token_provider": token_provider,
+}
 
 
 async def main() -> None:
@@ -25,12 +24,13 @@ async def main() -> None:
     roles = [
         "villager",
         "villager",
+        "villager",
         "werewolf",
         "seer",
     ]  # TODO: make this user input
 
     # Create a new game
-    game = WerewolfGame(model_client, roles)
+    game = WerewolfGame(model_config, roles)
 
     # Run the game
     await game.run()
