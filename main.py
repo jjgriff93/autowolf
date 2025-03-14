@@ -5,6 +5,9 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 
 from game import WerewolfGame
+from roles.seer import Seer
+from roles.villager import Villager
+from roles.werewolf import Werewolf
 
 load_dotenv()
 
@@ -22,12 +25,12 @@ model_config = {
 async def main() -> None:
     # Pick the roles in play (i.e. the cards to be dealt out)
     roles = [
-        "villager",
-        "villager",
-        "villager",
-        "werewolf",
-        "seer",
-    ]  # TODO: make this user input
+        Villager,
+        Villager,
+        Villager,
+        Werewolf,
+        Seer,
+    ]  # TODO: make this user input and validate number of allowed roles depending on number of players
 
     # Create a new game
     game = WerewolfGame(model_config, roles)
@@ -35,8 +38,7 @@ async def main() -> None:
     # Run the game
     await game.run()
 
-    # TODO: add seer functionality (perhaps do as separate class of agent with base type, set a Team parameter with either werewolf or villager)
-    # TODO: do the same with the werewolf role with more tailored instructions
+    # TODO: add specific tips for each role
     # TODO: add user proxy as a player
     # TODO: add randomised personalities
     # TODO: GUI

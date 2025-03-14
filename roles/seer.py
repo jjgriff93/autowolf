@@ -1,0 +1,39 @@
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.ui import Console
+from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
+from autogen_core.model_context import ChatCompletionContext
+from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
+
+from models.seer_choice_response import SeerChoiceResponse
+from roles._role import Role
+
+
+class Seer(Role):
+    """Seer player class."""
+
+    def __init__(self, model_config: dict[str, str], id: int):
+        super().__init__(model_config, id)
+        self.role = "seer"
+        self.system_prompt += "\nYou've checked your card and found out that you have the role of: seer."
+
+    async def see_another_player(self, players: list[Role]):
+        """Choose and see another player's role"""
+        model_client = AzureOpenAIChatCompletionClient(response_format=SeerChoiceResponse, **self.model_config)
+        agent = AssistantAgent(
+            name=f"player_{self.id}",
+            model_client=model_client,
+            system_message=self.system_prompt,
+            memory=[self.events, self.thoughts],
+        )
+        result = await Console(
+            agent.run_stream(
+                task="HOST: Seer, wake up. Choose a player you'd like to see the role of and provide a brief reason why."
+            )
+        )
+        choice = SeerChoiceResponse.model_validate_json(result.messages[-1].content)
+        chosen_player = next(p for p in players if p.id == choice.player_to_see)
+        content = MemoryContent(
+            content=f"HOST: You chose to see Player {chosen_player.id}'s role because {choice.reason}. They are a {chosen_player.role}.",
+            mime_type=MemoryMimeType.TEXT,
+        )
+        await self.events.add(content)

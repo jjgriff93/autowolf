@@ -1,21 +1,22 @@
+from abc import ABC
+
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
 from autogen_core.model_context import ChatCompletionContext
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
-from models.AgentVoteResponse import AgentVoteResponse
+from models.agent_vote_response import AgentVoteResponse
 
 
-class WerewolfPlayer:
+class Role(ABC):
+    """A base role used to implement a player in the Werewolf game."""
+
     def __init__(
         self,
         model_config: dict[str, str],
         id: int,
-        role: str,
-        all_roles: list[str],
     ):
         self.id = id
-        self.role = role
         self.model_config = model_config
 
         # Create a memory for recording the player's internal thoughts
@@ -36,6 +37,7 @@ class WerewolfPlayer:
       - The HOST will announce the votes and the player that was eliminated
       - The night phase will then begin and the werewolves will discuss who to kill
       - The werewolves will then vote for a player to eliminate
+      - If the seer is in the game, they will select a player and will see their role
       - The HOST will tell you who has been killed and the day phase will begin again
       - The game ends when there is only either villagers or werewolves remaining, or if only 2 players are left, in which case if a werewolf remains, they win
 
@@ -49,12 +51,8 @@ class WerewolfPlayer:
       - DO NOT take on the role of the HOST or any other player at any point
       - DO NOT proceed to the next phase until you're told to by the HOST
       - DO NOT vote for yourself
-      - In discussions, handoff/transfer to a specific player if you want to ask them a direct question, otherwise handoff randomly
+      - In discussions, after you've spoken, either handoff to another specific player to ask a direct question, otherwise handoff randomly to another player
       - Discussions with other players will end either after 60 seconds or until all have uttered **READY TO VOTE**
-
-      The possible roles in play (comma-separated) are: {','.join(all_roles)}.
-
-      You've just checked your card and found out that you have the role of {role}.
     """
 
     def get_agent_for_discussion(self, player_ids: list[int]) -> AssistantAgent:
