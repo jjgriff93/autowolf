@@ -38,7 +38,6 @@ async def main() -> None:
     # Run the game
     await game.run()
 
-    # TODO: add specific tips for each role
     # TODO: add user proxy as a player
     # TODO: add randomised personalities
     # TODO: GUI

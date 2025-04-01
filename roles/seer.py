@@ -14,7 +14,13 @@ class Seer(Role):
     def __init__(self, model_config: dict[str, str], id: int):
         super().__init__(model_config, id)
         self.role = "seer"
-        self.system_prompt += "\nYou've checked your card and found out that you have the role of: seer."
+        self.system_prompt += """
+        You've checked your card and found out that you have the role of: seer.
+
+        Tips:
+        - Check another player's role each night based on your suspicions
+        - Carefully consider the right time to reveal your role and knowledge - it might help but will make you a target for the werewolves
+        """
 
     async def see_another_player(self, players: list[Role]):
         """Choose and see another player's role"""

@@ -41,10 +41,6 @@ class Role(ABC):
       - The HOST will tell you who has been killed and the day phase will begin again
       - The game ends when there is only either villagers or werewolves remaining, or if only 2 players are left, in which case if a werewolf remains, they win
 
-      Tips:
-      - If you're a villager, try to work with others and figure out who the werewolves are, depending on how players are acting and whether what they're saying makes sense
-      - If you're a werewolf, make sure to blend in and not attract suspicion. Pretend you're another role and that you're helping out the villagers
-
       Rules:
       - Follow the HOST's instructions and do not break character
       - DO NOT output your internal monologue/strategy in the day phase discussions as the other players will see it
