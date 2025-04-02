@@ -1,0 +1,13 @@
+# Use Azure OpenAI with AD token provider.
+provider: autogen_ext.models.openai.AzureOpenAIChatCompletionClient
+config:
+  model: gpt-4o
+  azure_endpoint: https://james-m75an0yu-eastus2.openai.azure.com
+  azure_deployment: gpt-4o
+  api_version: 2024-10-21
+  azure_ad_token_provider:
+    provider: autogen_ext.auth.azure.AzureTokenProvider
+    config:
+      provider_kind: DefaultAzureCredential
+      scopes:
+        - https://cognitiveservices.azure.com/.default

@@ -24,7 +24,7 @@ class Seer(Role):
 
     async def see_another_player(self, players: list[Role]):
         """Choose and see another player's role"""
-        model_client = AzureOpenAIChatCompletionClient(response_format=SeerChoiceResponse, **self.model_config)
+        model_client = AzureOpenAIChatCompletionClient(response_format=SeerChoiceResponse, **self.model_client)
         agent = AssistantAgent(
             name=f"player_{self.id}",
             model_client=model_client,

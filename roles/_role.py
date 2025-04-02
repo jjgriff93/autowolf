@@ -1,8 +1,11 @@
+import copy
 from abc import ABC
 
 from autogen_agentchat.agents import AssistantAgent
+from autogen_core import ComponentModel
 from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
 from autogen_core.model_context import ChatCompletionContext
+from autogen_core.models import ChatCompletionClient
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
 from models.agent_vote_response import AgentVoteResponse
@@ -13,7 +16,7 @@ class Role(ABC):
 
     def __init__(
         self,
-        model_config: dict[str, str],
+        model_config: ComponentModel,
         id: int,
     ):
         self.id = id
@@ -55,7 +58,8 @@ class Role(ABC):
         """Create agent to discuss with other players"""
         if len(player_ids) > 1:
             handoffs = [f"player_{id}" for id in player_ids if id != self.id]
-            client = AzureOpenAIChatCompletionClient(**self.model_config, parallel_tool_calls=False)
+            client_without_parallel_tools = copy.replace(self.model_config, {"config.parallel_tool_calls": False})
+            client = ChatCompletionClient.load_component(client_without_parallel_tools)
         else:
             handoffs = None
             client = AzureOpenAIChatCompletionClient(**self.model_config)
@@ -66,7 +70,7 @@ class Role(ABC):
             handoffs=handoffs,
             memory=[self.events, self.thoughts],
             system_message=self.system_prompt,
-            model_client_stream=True,  # Enable streaming tokens from the model client.
+            model_client_stream=True,
         )
 
     async def make_vote(self, chat_context: ChatCompletionContext) -> AgentVoteResponse:
@@ -78,6 +82,7 @@ class Role(ABC):
             model_context=chat_context,
             system_message=self.system_prompt,
             memory=[self.events, self.thoughts],
+            model_client_stream=True,
         )
         result = await agent.run(
             task="HOST: use your memories and thoughts from previous discussions to determine the player you'd like to eliminate with a brief reason why."
@@ -95,6 +100,7 @@ class Role(ABC):
             system_message=self.system_prompt,
             memory=[self.events, self.thoughts],
             tools=[self.add_internal_thought],
+            model_client_stream=True,
         )
         await agent.run(
             task="HOST: discussion has ended. Please reflect on the discussion and summarise things that stood out, suspicions of other players or potential strategies and record them to your memory."

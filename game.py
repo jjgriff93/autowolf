@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import Sequence
 
@@ -5,8 +6,10 @@ from autogen_agentchat.conditions import TimeoutTermination
 from autogen_agentchat.messages import ChatMessage
 from autogen_agentchat.teams import Swarm
 from autogen_agentchat.ui import Console
+from autogen_core import ComponentModel
 from autogen_core.model_context import UnboundedChatCompletionContext
-from autogen_core.models import AssistantMessage, ChatCompletionClient
+from autogen_core.models import AssistantMessage
+from fastapi import WebSocket
 
 from models.agent_vote_response import AgentVoteResponse
 from roles._role import Role
@@ -14,17 +17,19 @@ from roles.seer import Seer
 from terminations.text_mention_from_all_termination import TextMentionFromAllTermination
 from utils import count_votes
 
+logger = logging.getLogger(__name__)
+
 
 class WerewolfGame:
 
-    def __init__(self, model_client: ChatCompletionClient, roles: list[Role]):
-        self.model_client = model_client
+    def __init__(self, model_config: ComponentModel, roles: list[Role], ws: WebSocket):
+        self.model_config = model_config
         self.round = 1
         self.game_over = False
         self.votes: list[AgentVoteResponse] = []
 
         random.shuffle(roles)
-        self.players = [r(model_client, i + 1) for i, r in enumerate(roles)]
+        self.players = [r(model_config, i + 1) for i, r in enumerate(roles)]
 
         print("The players and their roles are:")
         for player in self.players:
@@ -94,6 +99,7 @@ class WerewolfGame:
         # Eliminate the player
         eliminated_player = count_votes([vote.player_to_eliminate for vote in self.votes])
         self.players = [player for player in self.players if player.id != eliminated_player]
+
         # TODO: differentation between werewolf and villager elimination
         await self.announce_event_to_all(f"HOST: Player {eliminated_player} has been eliminated.")
 

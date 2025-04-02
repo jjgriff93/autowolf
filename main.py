@@ -1,28 +1,46 @@
-import asyncio
+import json
+import logging
 import os
+from typing import Any, Awaitable, Callable, Optional
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from dotenv import load_dotenv
+import aiofiles
+import yaml
+from autogen_core import CancellationToken, ComponentModel
+from autogen_core.models import ChatCompletionClient
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from game import WerewolfGame
 from roles.seer import Seer
 from roles.villager import Villager
 from roles.werewolf import Werewolf
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")
+app = FastAPI()
 
-model_config = {
-    "azure_deployment": os.getenv("MODEL_DEPLOYMENT"),
-    "model": os.getenv("MODEL_NAME"),
-    "api_version": "2024-10-21",
-    "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
-    "azure_ad_token_provider": token_provider,
-}
+app.mount("/static", StaticFiles(directory="."), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 
-async def main() -> None:
+@app.get("/")
+async def root():
+    """Serve webpage"""
+    return FileResponse("index.html")
+
+
+@app.websocket("/ws/game/new")
+async def new_game(websocket: WebSocket):
+    await websocket.accept()
+
     # Pick the roles in play (i.e. the cards to be dealt out)
     roles = [
         Villager,
@@ -32,11 +50,25 @@ async def main() -> None:
         Seer,
     ]  # TODO: make this user input and validate number of allowed roles depending on number of players
 
+    # Get model component config (using yaml template)
+    async with aiofiles.open("model_config.yaml", "r") as file:
+        model_base_config = yaml.safe_load(await file.read())
+
     # Create a new game
-    game = WerewolfGame(model_config, roles)
+    game = WerewolfGame(model_base_config, roles, websocket)
 
     # Run the game
-    await game.run()
+    try:
+        logger.info("Starting game...")
+        await game.run()
+    except WebSocketDisconnect:
+        logger.info("Client disconnected")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        try:
+            await websocket.send_json({"type": "error", "content": f"Unexpected error: {str(e)}", "source": "system"})
+        except:
+            pass
 
     # TODO: add user proxy as a player
     # TODO: add randomised personalities
@@ -44,4 +76,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8002)
