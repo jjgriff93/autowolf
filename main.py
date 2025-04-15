@@ -1,5 +1,5 @@
-import asyncio
 import os
+import chainlit as cl
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
@@ -8,6 +8,7 @@ from game import WerewolfGame
 from roles.seer import Seer
 from roles.villager import Villager
 from roles.werewolf import Werewolf
+from ui.message_handler import MessageHandler
 
 load_dotenv()
 
@@ -21,8 +22,11 @@ model_config = {
     "azure_ad_token_provider": token_provider,
 }
 
+message_handler = MessageHandler()
 
-async def main() -> None:
+
+@cl.on_chat_start
+async def on_chat_start():
     # Pick the roles in play (i.e. the cards to be dealt out)
     roles = [
         Villager,
@@ -30,18 +34,8 @@ async def main() -> None:
         Villager,
         Werewolf,
         Seer,
-    ]  # TODO: make this user input and validate number of allowed roles depending on number of players
+    ]
 
     # Create a new game
-    game = WerewolfGame(model_config, roles)
-
-    # Run the game
+    game = WerewolfGame(model_config, message_handler, roles)
     await game.run()
-
-    # TODO: add user proxy as a player
-    # TODO: add randomised personalities
-    # TODO: GUI
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

@@ -4,27 +4,28 @@ from typing import Sequence
 from autogen_agentchat.conditions import TimeoutTermination
 from autogen_agentchat.messages import ChatMessage
 from autogen_agentchat.teams import Swarm
-from autogen_agentchat.ui import Console
 from autogen_core.model_context import UnboundedChatCompletionContext
-from autogen_core.models import AssistantMessage, ChatCompletionClient
+from autogen_core.models import AssistantMessage
 
 from models.agent_vote_response import AgentVoteResponse
 from roles._role import Role
 from roles.seer import Seer
 from terminations.text_mention_from_all_termination import TextMentionFromAllTermination
+from ui.message_handler import MessageHandler
 from utils import count_votes
 
 
 class WerewolfGame:
 
-    def __init__(self, model_client: ChatCompletionClient, roles: list[Role]):
-        self.model_client = model_client
+    def __init__(self, model_config: dict[str, str], message_handler: MessageHandler, roles: list[Role]):
+        self.model_config = model_config
+        self.message_handler = message_handler
         self.round = 1
         self.game_over = False
         self.votes: list[AgentVoteResponse] = []
 
         random.shuffle(roles)
-        self.players = [r(model_client, i + 1) for i, r in enumerate(roles)]
+        self.players = [r(model_config, message_handler, i + 1) for i, r in enumerate(roles)]
 
         print("The players and their roles are:")
         for player in self.players:
@@ -32,7 +33,7 @@ class WerewolfGame:
 
     async def announce_event_to_all(self, message: str):
         """Announce an event to all players."""
-        print(message)
+        await self.message_handler.send_message(message)
         for player in self.players:
             await player.remember_event(message, self.round)
 
@@ -46,7 +47,7 @@ class WerewolfGame:
 
         async def announce_event_to_participants(message: str):
             """Add messages to only the current participants' event memories"""
-            print(message)
+            await self.message_handler.send_message(message)
             for p in participants:
                 await p.remember_event(message, self.round)
 
@@ -59,7 +60,7 @@ class WerewolfGame:
                 | TextMentionFromAllTermination(set([a.name for a in agents]), "READY TO VOTE"),
             )
             # Run the agent(s) discussion and stream the messages to the console.
-            task_result = await Console(team.run_stream(task=task))
+            task_result = await self.message_handler.send_message_stream(team.run_stream(task=task))
 
             # Ask each particpant to individually reflect on the chat history of the round and come up with suspicions/strategy, store to memory
             player_messages = [m for m in task_result.messages if m.type == "ThoughtEvent" or m.type == "TextMessage"]
@@ -70,7 +71,7 @@ class WerewolfGame:
                 await p.reflect_on_discussion(discussion_context)
         else:
             # If only one agent, run it directly
-            task_result = await Console(agents[0].run_stream(task=task))
+            task_result = await self.message_handler.send_message_stream(agents[0].run_stream(task=task))
             discussion_context = UnboundedChatCompletionContext(
                 initial_messages=[
                     AssistantMessage(content=m.content, source=m.source)
@@ -101,13 +102,15 @@ class WerewolfGame:
         werewolves = [p for p in self.players if p.role == "werewolf"]
 
         if len(werewolves) == 0:
-            print("No werewolves remain. The villagers have won!")
+            await self.message_handler.send_message("No werewolves remain. The villagers have won!")
             self.game_over = True
         elif len(self.players) == 2:
-            print("Only 2 players remain, and there is still a werewolf. The werewolf team has won!")
+            await self.message_handler.send_message(
+                "Only 2 players remain, and there is still a werewolf. The werewolf team has won!"
+            )
             self.game_over = True
         elif len(werewolves) == len(self.players):
-            print(f"No villagers remain. The werewolf team has won!")
+            await self.message_handler.send_message("No villagers remain. The werewolf team has won!")
             self.game_over = True
 
         # TODO: save the game state (agent memory, team, round number, current players etc.) to a file
@@ -119,7 +122,7 @@ class WerewolfGame:
         )
         while not self.game_over:
             # Run day phase
-            print("=== DAY PHASE ===")
+            await self.message_handler.send_message("=== DAY PHASE ===")
             await self.run_phase(
                 f"HOST: It's Round {self.round}. The day phase has begun. Player {', Player '.join([str(p.id) for p in self.players])}... start your discussions!",
                 self.players,
@@ -130,20 +133,20 @@ class WerewolfGame:
 
             # Run night phase
             # TODO: split methods into a run_discussion, run_vote
-            print("=== NIGHT PHASE ===")
-            print("*** Werewolves, wake up... ***")
+            await self.message_handler.send_message("=== NIGHT PHASE ===")
+            await self.message_handler.send_message("*** Werewolves, wake up... ***")
             werewolves = [p for p in self.players if p.role == "werewolf"]
             task = f"HOST: The night phase has now begun. The villagers are asleep. Werewolves, wake up. You must now decide which villager to kill! The villagers remaining are Player {', Player '.join([str(v.id) for v in self.players if v.role != "werewolf"])}."
             if len(werewolves) > 1:
                 task += f" The werewolves remaining are Player {', Player '.join([str(w.id) for w in werewolves])}). You may now discuss your strategy with each other."
             else:
-                task += f" You are the only remaining werewolf. You may now reflect on your strategy and consider which players might be a threat to you."
+                task += " You are the only remaining werewolf. You may now reflect on your strategy and consider which players might be a threat to you."
             await self.run_phase(task, werewolves)
 
             # TODO: if we add more special actions, implement this generically so we can simply iterate
             seer = next((p for p in self.players if isinstance(p, Seer)), None)
             if seer:
-                print("*** Seer, wake up... ***")
+                await self.message_handler.send_message("*** Seer, wake up... ***")
                 await seer.see_another_player(self.players)
 
             self.round += 1
