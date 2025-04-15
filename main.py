@@ -25,8 +25,7 @@ model_config = {
 message_handler = MessageHandler()
 
 
-@cl.on_chat_start
-async def on_chat_start():
+async def start_game():
     # Pick the roles in play (i.e. the cards to be dealt out)
     roles = [
         Villager,
@@ -34,8 +33,21 @@ async def on_chat_start():
         Villager,
         Werewolf,
         Seer,
-    ]
+    ]  # TODO: make this user input and validate number of allowed roles depending on number of players
 
     # Create a new game
     game = WerewolfGame(model_config, message_handler, roles)
     await game.run()
+
+
+@cl.on_chat_start
+async def on_chat_start():
+    res = await cl.AskActionMessage(
+        content="Start the game?",
+        actions=[
+            cl.Action(name="Let's go", payload={"value": "continue"}, label="Start")
+        ],
+    ).send()
+
+    if res and res.get("payload").get("value") == "continue":
+        await start_game()
