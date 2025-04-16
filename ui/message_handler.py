@@ -6,14 +6,19 @@ from autogen_agentchat.messages import (
     BaseAgentEvent,
     BaseChatMessage,
     ThoughtEvent,
-    TextMessage
+    TextMessage,
+    ToolCallExecutionEvent
 )
+
+from ui.task_handler import TaskHandler
 
 T = TypeVar("T", bound=TaskResult | Response)
 
 
 class MessageHandler:
     def __init__(self):
+        self.task_handler = TaskHandler()
+        self.current_message = None
         pass
 
     async def send_message(self, message: str, author: Optional[str] = None):
@@ -27,8 +32,11 @@ class MessageHandler:
     async def send_message_stream(self, stream: AsyncGenerator[BaseAgentEvent | BaseChatMessage | T, None]) -> TaskResult:
         """Stream messages to the UI."""
         async for message in stream:
-            if isinstance(message, TaskResult):
-                return message
-
-            if isinstance(message, ThoughtEvent) or isinstance(message, TextMessage):
-                await self.send_message(message.content, message.source)
+            match message:
+                case TaskResult():
+                    return message
+                case ToolCallExecutionEvent():
+                    for content in message.content:
+                        await self.task_handler.send_task(content.content)
+                case ThoughtEvent() | TextMessage():
+                    await self.send_message(message.content, message.source)
