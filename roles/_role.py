@@ -6,6 +6,7 @@ from autogen_core.model_context import ChatCompletionContext
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
 from models.agent_vote_response import AgentVoteResponse
+from ui.message_handler import MessageHandler
 
 
 class Role(ABC):
@@ -14,10 +15,12 @@ class Role(ABC):
     def __init__(
         self,
         model_config: dict[str, str],
+        message_handler: MessageHandler,
         id: int,
     ):
         self.id = id
         self.model_config = model_config
+        self.message_handler = message_handler
 
         # Create a memory for recording the player's internal thoughts
         self.thoughts = ListMemory(name="thoughts")  # TODO: change to vector and make persistent

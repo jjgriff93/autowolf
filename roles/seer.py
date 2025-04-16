@@ -1,18 +1,17 @@
 from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.ui import Console
-from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
-from autogen_core.model_context import ChatCompletionContext
+from autogen_core.memory import MemoryContent, MemoryMimeType
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
 from models.seer_choice_response import SeerChoiceResponse
 from roles._role import Role
+from ui.message_handler import MessageHandler
 
 
 class Seer(Role):
     """Seer player class."""
 
-    def __init__(self, model_config: dict[str, str], id: int):
-        super().__init__(model_config, id)
+    def __init__(self, model_config: dict[str, str], message_handler: MessageHandler, id: int):
+        super().__init__(model_config, message_handler, id)
         self.role = "seer"
         self.system_prompt += """
         You've checked your card and found out that you have the role of: seer.
@@ -31,7 +30,7 @@ class Seer(Role):
             system_message=self.system_prompt,
             memory=[self.events, self.thoughts],
         )
-        result = await Console(
+        result = await self.message_handler.send_message_stream(
             agent.run_stream(
                 task="HOST: Seer, wake up. Choose a player you'd like to see the role of and provide a brief reason why."
             )

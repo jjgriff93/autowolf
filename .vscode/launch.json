@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Chainlit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "chainlit",
+            "args": [
+                "run",
+                "${workspaceFolder}/main.py"
+            ]
+        }
+    ]
+}

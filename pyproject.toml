@@ -12,6 +12,7 @@ autogen-ext = {extras = ["azure", "openai"], version = "^0.4.9"}
 azure-identity = "1.20.0"
 python-dotenv = "^1.0.1"
 black = "^25.1.0"
+chainlit = "^2.4.400"
 
 
 [build-system]
