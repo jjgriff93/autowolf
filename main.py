@@ -51,3 +51,12 @@ async def on_chat_start():
 
     if res and res.get("payload").get("value") == "continue":
         await start_game()
+
+
+@cl.on_message
+async def on_message(message: str):
+    """Handle incoming messages."""
+    await cl.Message(
+        content="Sorry, user input is not supported yet.",
+        author="System"
+    ).send()
