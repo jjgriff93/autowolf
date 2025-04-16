@@ -40,5 +40,5 @@ az login
 ### Run the application
 
 ```bash
-poetry run python main.py
+poetry run chainlit run main.py
 ```
